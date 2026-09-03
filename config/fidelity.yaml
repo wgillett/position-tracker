@@ -1,0 +1,35 @@
+firm: fidelity
+login_url: https://digital.fidelity.com/ftgw/digital/portfolio/positions
+positions_url: https://digital.fidelity.com/ftgw/digital/portfolio/positions
+
+# CSS selectors used to scrape the positions page (login-state detection is
+# URL-based and needs no selector -- see FidelityScraper.is_logged_in).
+#
+# Fidelity's positions grid is an ag-Grid table: each account and its
+# holdings are flat, sibling rows (not nested containers). An `account_row`
+# is followed by that account's `position_row`s until the next account row.
+# Some `position_row`s are section-header dividers (e.g. "Cash / HELD IN
+# MONEY MARKET" above the actual settlement-fund holding) rather than real
+# holdings -- FidelityScraper detects and skips these by checking for a
+# missing quantity/market_value cell.
+#
+# All selectors below were confirmed against a live session. ag-Grid only
+# renders columns that fit the viewport, which is why runner.py and the live
+# test use a wide one (2400px) -- if `track fidelity` errors while parsing a
+# row, run `uv run pytest -m live tests/live/test_fidelity_live.py -s` to
+# check match counts and correct them.
+#
+# The grid has more columns than we currently scrape, in this left-to-right
+# order: Symbol, Last price, Last price change, Today's gain/loss $, Today's
+# gain/loss %, Total gain/loss $, Total gain/loss %, Current value, % of
+# account, Quantity, Average cost basis, Cost basis total, 52-week range.
+# We only use Symbol (+ its description), Quantity, and Current value today.
+selectors:
+  account_row: ".posweb-row-account"
+  account_name: ".posweb-cell-account_primary"
+  account_number: ".posweb-cell-account_secondary"
+  position_row: ".posweb-row-position"
+  symbol: ".posweb-cell-symbol-name_container > span"
+  description: ".posweb-cell-symbol-description"
+  quantity: ".posweb-cell-quantity_value"
+  market_value: ".posweb-cell-current_value"
