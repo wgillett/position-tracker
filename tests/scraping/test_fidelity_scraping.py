@@ -22,36 +22,52 @@ _SELECTORS = {
 
 # Approximates Fidelity's real ag-Grid markup: accounts and their holdings are
 # flat sibling rows, not nested containers -- an account row is followed by
-# that account's position rows until the next account row.
+# that account's position rows until the next account row. Each logical row is
+# itself split into two DOM elements sharing a row-id: a pinned "Symbol"
+# fragment (symbol/description, or account name/number) and a "center columns"
+# fragment (quantity/value) -- neither fragment alone has everything.
 _FIXTURE_HTML = """
 <div role="grid">
-  <div class="ag-row posweb-row-account">
+  <div class="ag-row posweb-row-account" row-id="1">
     <div class="posweb-cell-account_primary">INDIVIDUAL - TOD</div>
     <div class="posweb-cell-account_secondary">Z12-345678</div>
   </div>
-  <div class="ag-row posweb-row-position posweb-row-core">
+  <div class="ag-row posweb-row-position posweb-row-core" row-id="2">
     <div class="posweb-cell-symbol-name_container"><span>Cash</span></div>
     <p class="posweb-cell-symbol-description">HELD IN MONEY MARKET</p>
   </div>
-  <div class="ag-row posweb-row-position">
+  <div class="ag-row posweb-row-position" row-id="3">
     <div class="posweb-cell-symbol-name_container"><span>SPAXX</span></div>
     <p class="posweb-cell-symbol-description">Fidelity Government Money Market Fund</p>
+  </div>
+  <div class="ag-row posweb-row-position" row-id="3">
     <span class="posweb-cell-quantity_value">1,234.56</span>
     <span class="posweb-cell-current_value">$1,234.56</span>
   </div>
-  <div class="ag-row posweb-row-position">
+  <div class="ag-row posweb-row-position" row-id="4">
     <div class="posweb-cell-symbol-name_container"><span>FXAIX</span></div>
     <p class="posweb-cell-symbol-description">Fidelity 500 Index Fund</p>
+  </div>
+  <div class="ag-row posweb-row-position" row-id="4">
     <span class="posweb-cell-quantity_value">10</span>
     <span class="posweb-cell-current_value">$2,000.00</span>
   </div>
-  <div class="ag-row posweb-row-account">
+  <div class="ag-row posweb-row-position posweb-row-pending_activity" row-id="5">
+    <span class="posweb-cell-quantity_value">1</span>
+    <span class="posweb-cell-current_value">$42.00</span>
+  </div>
+  <div class="ag-row posweb-row-account" row-id="6">
+    <span class="posweb-cell-account_total_label">Account total</span>
+  </div>
+  <div class="ag-row posweb-row-account" row-id="7">
     <div class="posweb-cell-account_primary">ROTH IRA</div>
     <div class="posweb-cell-account_secondary">Z98-765432</div>
   </div>
-  <div class="ag-row posweb-row-position">
+  <div class="ag-row posweb-row-position" row-id="8">
     <div class="posweb-cell-symbol-name_container"><span>FZROX</span></div>
     <p class="posweb-cell-symbol-description">Fidelity ZERO Total Market Index Fund</p>
+  </div>
+  <div class="ag-row posweb-row-position" row-id="8">
     <span class="posweb-cell-quantity_value">50</span>
     <span class="posweb-cell-current_value">$5,500.00</span>
   </div>
@@ -86,8 +102,13 @@ def test_scrape_positions_parses_account_rows_and_holdings(page: Page) -> None:
 
     # The "Cash / HELD IN MONEY MARKET" row is a section-header divider, not a
     # real holding (no quantity/value cells) -- it must be skipped, not scraped.
+    # The pending-activity row has quantity/value but no symbol/description --
+    # it must be skipped too, not scraped as a bogus holding.
+    # The "Account total" row shares the account_row class but has no
+    # name/number cells -- it must be skipped too, not treated as a new account.
     assert len(positions) == 3
     assert all(p.ticker != "Cash" for p in positions)
+    assert all(p.value != 42.0 for p in positions)
 
     money_market = positions[0]
     assert money_market.firm == "fidelity"
@@ -127,7 +148,7 @@ def test_scrape_positions_raises_when_no_rows_found(page: Page) -> None:
 def _fulfill_position_row_only(route: Route) -> None:
     html = """
     <div role="grid">
-      <div class="ag-row posweb-row-position">
+      <div class="ag-row posweb-row-position" row-id="1">
         <div class="posweb-cell-symbol-name_container"><span>SPAXX</span></div>
         <p class="posweb-cell-symbol-description">Fidelity Government Money Market Fund</p>
         <span class="posweb-cell-quantity_value">1</span>

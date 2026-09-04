@@ -1,14 +1,12 @@
 from pathlib import Path
 from typing import cast
 
-from playwright.sync_api import Error as PlaywrightError
-from playwright.sync_api import Page, StorageState, ViewportSize, sync_playwright
+from playwright.sync_api import StorageState, ViewportSize, sync_playwright
 
 from position_tracker import keychain
 from position_tracker.csv_writer import output_path, write_positions_csv
 from position_tracker.firm_config import load_firm_config
 from position_tracker.scrapers import SCRAPERS
-from position_tracker.scrapers.base import FirmScraper
 from position_tracker.settings import Settings, load_settings
 
 # Wide enough that firms' data grids (e.g. Fidelity's ag-Grid positions table)
@@ -30,27 +28,17 @@ def run_track(firm: str, settings: Settings | None = None) -> Path:
     session_state = keychain.load_session(firm, settings.session_ttl_seconds)
     storage_state = cast(StorageState, session_state) if session_state is not None else None
 
+    # Always run visibly. Headless session reuse was rejected outright by
+    # Fidelity's bot defenses (net::ERR_HTTP2_PROTOCOL_ERROR) even with a
+    # valid cached session -- retrying automated connection attempts risks
+    # looking more suspicious, not less, so we don't try headless at all.
     with sync_playwright() as playwright:
-        headless = session_state is not None
-        browser = playwright.chromium.launch(headless=headless)
+        browser = playwright.chromium.launch(headless=False)
         context = browser.new_context(storage_state=storage_state, viewport=_VIEWPORT)
         page = context.new_page()
 
         try:
-            logged_in = _check_logged_in(scraper, page) if session_state is not None else False
-
-            if logged_in is None and headless:
-                # Headless reuse can be rejected outright by a site's bot defenses
-                # (seen in practice as net::ERR_HTTP2_PROTOCOL_ERROR against
-                # Fidelity) even with a still-valid cached session. Retry the same
-                # session visibly before concluding it actually needs a fresh login.
-                print("Headless session reuse failed; retrying the same session visibly.")
-                context.close()
-                browser.close()
-                browser = playwright.chromium.launch(headless=False)
-                context = browser.new_context(storage_state=storage_state, viewport=_VIEWPORT)
-                page = context.new_page()
-                logged_in = _check_logged_in(scraper, page)
+            logged_in = scraper.is_logged_in(page) if session_state is not None else False
 
             if not logged_in:
                 scraper.wait_for_manual_login(page)
@@ -68,13 +56,3 @@ def run_track(firm: str, settings: Settings | None = None) -> Path:
     path = output_path(firm, settings.output_dir)
     write_positions_csv(positions, path)
     return path
-
-
-def _check_logged_in(scraper: FirmScraper, page: Page) -> bool | None:
-    """True/False if the check succeeded, or None if the check itself failed
-    (e.g. a headless connection rejected by the site's bot defenses) rather
-    than definitively answering whether the session is valid."""
-    try:
-        return scraper.is_logged_in(page)
-    except PlaywrightError:
-        return None

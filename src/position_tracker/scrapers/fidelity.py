@@ -36,37 +36,60 @@ class FidelityScraper(FirmScraper):
         )
 
     def scrape_positions(self, page: Page) -> list[Position]:
-        """Fidelity's positions grid (ag-Grid) has no nested account containers:
-        an account row and its holdings' position rows are flat siblings in DOM
-        order, so we walk them in order and track the "current account" as we go."""
+        """Fidelity's positions grid (ag-Grid) splits each logical row into two
+        DOM elements that share a `row-id` attribute: a pinned "Symbol" column
+        fragment and a scrollable "center columns" fragment (quantity, value,
+        etc.) -- neither fragment alone has all the cells we need. Account rows
+        and position rows are themselves flat siblings (no nested containers).
+        So: group fragments by row-id (preserving DOM order) into logical rows,
+        then walk those, merging cell lookups across each row's fragment(s) and
+        tracking the "current account" as we go."""
         page.goto(self._positions_url())
         self.jittered_delay()
 
         account_row_selector = self._selector("account_row")
         position_row_selector = self._selector("position_row")
-        rows = page.locator(f"{account_row_selector}, {position_row_selector}")
-        row_count = rows.count()
-        if row_count == 0:
+        combined_selector = f"{account_row_selector}, {position_row_selector}"
+        fragments = page.locator(combined_selector)
+        fragment_count = fragments.count()
+        if fragment_count == 0:
             raise ValueError(
                 "No account or position rows found on the Fidelity positions page; "
                 "the page structure may have changed. Check the selectors in "
                 "config/fidelity.yaml."
             )
 
+        ordered_row_ids: list[str] = []
+        seen_row_ids: set[str] = set()
+        for i in range(fragment_count):
+            row_id = fragments.nth(i).get_attribute("row-id")
+            if row_id and row_id not in seen_row_ids:
+                seen_row_ids.add(row_id)
+                ordered_row_ids.append(row_id)
+
         today = date.today()
         positions: list[Position] = []
         current_account_name: str | None = None
         current_account_number: str | None = None
 
-        for i in range(row_count):
-            row = rows.nth(i)
-            is_account_row = row.evaluate("(el, sel) => el.matches(sel)", account_row_selector)
+        for row_id in ordered_row_ids:
+            row = page.locator(
+                f'{account_row_selector}[row-id="{row_id}"], '
+                f'{position_row_selector}[row-id="{row_id}"]'
+            )
+            matches_account_row = "(el, sel) => el.matches(sel)"
+            is_account_row = row.first.evaluate(matches_account_row, account_row_selector)
 
             if is_account_row:
                 name_locator = row.locator(self._selector("account_name"))
+                number_locator = row.locator(self._selector("account_number"))
+                if name_locator.count() == 0 or number_locator.count() == 0:
+                    # Some account rows (e.g. an "Account total" summary row)
+                    # don't carry name/number cells in either fragment -- skip
+                    # rather than erroring; current_account_name/number carry over.
+                    continue
                 current_account_name = name_locator.inner_text().strip()
-                raw_number = row.locator(self._selector("account_number")).inner_text().strip()
-                current_account_number = mask_account_number(raw_number)
+                current_account_number = mask_account_number(number_locator.inner_text().strip())
                 continue
 
             if current_account_name is None or current_account_number is None:
@@ -75,12 +98,14 @@ class FidelityScraper(FirmScraper):
                     "it to an account. Check the selectors in config/fidelity.yaml."
                 )
 
+            symbol_locator = row.locator(self._selector("symbol"))
+            description_locator = row.locator(self._selector("description"))
             quantity_locator = row.locator(self._selector("quantity"))
             value_locator = row.locator(self._selector("market_value"))
-            if quantity_locator.count() == 0 or value_locator.count() == 0:
-                # Category header rows (e.g. Fidelity's "Cash / HELD IN MONEY
-                # MARKET" divider above the actual settlement-fund holding)
-                # match `position_row` but carry no quantity/value cells --
+            cell_locators = (symbol_locator, description_locator, quantity_locator, value_locator)
+            if any(locator.count() == 0 for locator in cell_locators):
+                # Category-header dividers (e.g. "Cash / HELD IN MONEY MARKET")
+                # match position_row but are missing cells in both fragments --
                 # they're section labels, not real holdings.
                 continue
 
@@ -89,8 +114,8 @@ class FidelityScraper(FirmScraper):
                     firm=self.config.firm,
                     account_name=current_account_name,
                     account_number=current_account_number,
-                    asset_name=row.locator(self._selector("description")).inner_text().strip(),
-                    ticker=row.locator(self._selector("symbol")).inner_text().strip(),
+                    asset_name=description_locator.inner_text().strip(),
+                    ticker=symbol_locator.inner_text().strip(),
                     shares=_parse_number(quantity_locator.inner_text()),
                     value=_parse_number(value_locator.inner_text()),
                     date=today,

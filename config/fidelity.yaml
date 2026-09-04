@@ -8,10 +8,16 @@ positions_url: https://digital.fidelity.com/ftgw/digital/portfolio/positions
 # Fidelity's positions grid is an ag-Grid table: each account and its
 # holdings are flat, sibling rows (not nested containers). An `account_row`
 # is followed by that account's `position_row`s until the next account row.
-# Some `position_row`s are section-header dividers (e.g. "Cash / HELD IN
-# MONEY MARKET" above the actual settlement-fund holding) rather than real
-# holdings -- FidelityScraper detects and skips these by checking for a
-# missing quantity/market_value cell.
+#
+# ag-Grid also splits each *logical* row into two DOM elements sharing a
+# `row-id` attribute: a pinned "Symbol" column fragment (symbol/description,
+# or account name/number) and a scrollable "center columns" fragment
+# (quantity/value, etc.) -- neither fragment alone has every cell.
+# FidelityScraper groups fragments by row-id and merges cell lookups across
+# them. Some logical rows are section-header dividers (e.g. "Cash / HELD IN
+# MONEY MARKET", "Account total") rather than real holdings/accounts --
+# these are detected and skipped by checking for missing cells even after
+# merging fragments.
 #
 # All selectors below were confirmed against a live session. ag-Grid only
 # renders columns that fit the viewport, which is why runner.py and the live
