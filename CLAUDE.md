@@ -20,22 +20,22 @@ Try to avoid triggering bot detection. Use randomized/jittered delays between pa
 
 # Tech
 
-* Python 3.14 - the most recent stable release
-  * use a .python-version pin to ensure stability
-* uv - project management
-  * configure the project via pyproject.toml
-* click - CLI
-* pyyaml - configuration
-* pydantic-settings - typed, validated configuration
-* keyring - OS keychain access for credentials and session tokens
-* hatchling - build backend
-* Playwright - web scraping library
-* ruff - linting
-* mypy - type checking
-* pytest - testing
-* pre-commit — runs formatters/linters automatically on commit
-* invoke - Python task execution library and command-line tool
-* start with the most recent stable versions of all libraries and set up uv.lock for stability
+- Python 3.14 - the most recent stable release
+  - use a .python-version pin to ensure stability
+- uv - project management
+  - configure the project via pyproject.toml
+- click - CLI
+- pyyaml - configuration
+- pydantic-settings - typed, validated configuration
+- keyring - OS keychain access for credentials and session tokens
+- hatchling - build backend
+- Playwright - web scraping library
+- ruff - linting
+- mypy - type checking
+- pytest - testing
+- pre-commit — runs formatters/linters automatically on commit
+- invoke - Python task execution library and command-line tool
+- start with the most recent stable versions of all libraries and set up uv.lock for stability
 
 # Design
 
@@ -46,14 +46,14 @@ Create a CLI Python-based app that scrapes balances from personal financial acco
 `track <firm>`
 
 Work with the user to log into the firm's website, then pull down positions from all accounts on the firm's website and store the data in a single CSV with the following columns:
-* firm
-* account_name
-* account_number - masked to the last 4 digits, e.g., ...1234
-* asset_name - e.g., Fidelity® Government Money Market Fund
-* ticker - e.g., SPAXX
-* shares - number of shares
-* value - in dollars
-* date - date on which the data was pulled
+- firm
+- account_name
+- account_number - masked to the last 4 digits, e.g., ...1234
+- asset_name - e.g., Fidelity® Government Money Market Fund
+- ticker - e.g., SPAXX
+- shares - number of shares
+- value - in dollars
+- date - date on which the data was pulled
 
 ### Configuration
 
@@ -65,8 +65,8 @@ If there are any errors during the scraping, fail immediately and print out an i
 
 ### CSV output file
 
-* Create a brand-new CSV file each time named `<firm>_positions_<timestamp>.csv`, where timestamp is ISO 8601 basic format, e.g.,20260903T143027Z. If a file with that name already exists, overwrite the existing file.
-* Put the file in an output directory configured via pydantic-settings. If the output directory is not configured, fail and print an error guiding the user how to set the config.
+- Create a brand-new CSV file each time named `<firm>_positions_<timestamp>.csv`, where timestamp is ISO 8601 basic format, e.g.,20260903T143027Z. If a file with that name already exists, overwrite the existing file.
+- Put the file in an output directory configured via pydantic-settings. If the output directory is not configured, fail and print an error guiding the user how to set the config.
 
 ## Testing
 
@@ -75,7 +75,7 @@ Strategy:
 2. Playwright tests against fixtures/mocks
 
 Structure:
-* pytest + pytest-playwright plugin provides the page/browser fixtures.
-* Separate test dirs: tests/unit/, tests/scraping/ (fixture-driven Playwright), tests/live/ (manual-only, excluded from default pytest run via markers)
+- pytest + pytest-playwright plugin provides the page/browser fixtures.
+- Separate test dirs: tests/unit/, tests/scraping/ (fixture-driven Playwright), tests/live/ (manual-only, excluded from default pytest run via markers)
 
 Live-site tests must be explicit, opt-in, human-run check rather than something automated, to avoid security risks and triggering bot detection.
