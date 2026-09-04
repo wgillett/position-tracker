@@ -224,8 +224,11 @@ class VanguardScraper(FirmScraper):
     def _parse_heading(self, text: str) -> tuple[str, str] | None:
         """Split an account accordion heading like
         "Walter Gillett — Traditional IRA Brokerage Account — 12345678*" into
-        (account_name, masked_account_number). Vanguard's own trailing '*' is
-        discarded in favor of masking the digits ourselves.
+        (account_name, masked_account_number). account_name keeps everything
+        before the number ("Walter Gillett — Traditional IRA Brokerage
+        Account"), since the account holder's name distinguishes accounts of
+        the same type held by different family members. Vanguard's own
+        trailing '*' is discarded in favor of masking the digits ourselves.
 
         Returns None for a heading with no trailing number segment (just
         "Name — Account Type"), observed for defunct/duplicate account
@@ -241,7 +244,7 @@ class VanguardScraper(FirmScraper):
                 f"Type' for a numberless account). Check the 'account_heading' "
                 f"selector in config/vanguard.yaml."
             )
-        account_name = parts[1].strip()
+        account_name = " — ".join(part.strip() for part in parts[:-1])
         digits = re.sub(r"\D", "", parts[-1])
         if not digits:
             raise ValueError(f"Could not find an account number in heading {text!r}")

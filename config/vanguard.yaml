@@ -10,9 +10,11 @@ positions_url: https://www.vanguard.com/en/investor/portfolio/investments/
 # id, not the account number). Its heading text combines the account holder,
 # the account type, and a partly-masked account number, e.g.:
 #   "Walter Gillett — Traditional IRA Brokerage Account — 12345678*"
-# VanguardScraper splits on the em dash to get account_name (the middle
-# segment) and re-masks the trailing digits to the last 4 (see
-# mask_account_number) rather than trusting Vanguard's own masking.
+# VanguardScraper splits on the em dash to get account_name (everything
+# before the number, e.g. "Walter Gillett — Traditional IRA Brokerage
+# Account" -- the holder's name distinguishes accounts of the same type held
+# by different family members) and re-masks the trailing digits to the last 4
+# (see mask_account_number) rather than trusting Vanguard's own masking.
 #
 # Each account's holdings render in their own <table>, grouped under
 # category-header rows (e.g. "Mutual funds", "Stocks") that share the
