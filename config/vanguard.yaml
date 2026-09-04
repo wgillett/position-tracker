@@ -1,2 +1,49 @@
 firm: vanguard
 login_url: https://investor.vanguard.com/
+positions_url: https://www.vanguard.com/en/investor/portfolio/investments/
+
+# CSS selectors used to scrape the Holdings page (login-state detection is
+# URL-based and needs no selector -- see VanguardScraper.is_logged_in).
+#
+# Each brokerage account renders as its own accordion, tagged with a
+# data-testid of "account-id:<accountId>" (accountId is Vanguard's internal
+# id, not the account number). Its heading text combines the account holder,
+# the account type, and a partly-masked account number, e.g.:
+#   "Walter Gillett — Traditional IRA Brokerage Account — 12345678*"
+# VanguardScraper splits on the em dash to get account_name (the middle
+# segment) and re-masks the trailing digits to the last 4 (see
+# mask_account_number) rather than trusting Vanguard's own masking.
+#
+# Each account's holdings render in their own <table>, grouped under
+# category-header rows (e.g. "Mutual funds", "Stocks") that share the
+# holding_row shape structurally (both are <tr>s) but use scope="colgroup"
+# instead of scope="row" on their lone cell -- the holding_row selector's
+# :has(th[scope='row']) excludes them.
+#
+# The table has no per-cell data-testid/class for quantity or balance (unlike
+# Fidelity's grid), only on the *header* cells (quantity-column,
+# current-balance-column). VanguardScraper finds each header's position among
+# its <tr>'s element children and reads the same position in each body row,
+# so column reordering doesn't silently misattribute values.
+#
+# The settlement (sweep) fund balance is NOT a row in this table -- it renders
+# in a separate "Account balance details" card (settlement_fund_section)
+# instead. That card's markup has no ticker anywhere, so VanguardScraper maps
+# the fund's display name to a ticker by hand (see _SETTLEMENT_FUND_TICKERS in
+# scrapers/vanguard.py) and assumes shares == dollar value, since the fund's
+# NAV is fixed at $1. Each card is matched to its account via the account id
+# embedded in settlement_fund_name's href, not DOM nesting under
+# account_container (that hasn't been confirmed against the live page).
+selectors:
+  account_container: "[data-testid^='account-id:']"
+  account_heading: ".c11n-accordion__heading"
+  expand_accounts_button: "[data-testid='expand-accounts']"
+  holdings_table: table
+  holding_row: "tbody tr:has(th[scope='row'])"
+  ticker: .holding-ticker
+  description: .holding-name__text
+  quantity_column_header: "thead th[data-testid='quantity-column']"
+  balance_column_header: "thead th[data-testid='current-balance-column']"
+  settlement_fund_section: "[data-testid='settlement-fund-section']"
+  settlement_fund_name: "[data-testid='settlementFundName']"
+  settlement_fund_balance: "[data-testid='settlement-fund-balance']"
