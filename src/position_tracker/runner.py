@@ -14,7 +14,7 @@ from position_tracker.settings import Settings, load_settings
 _VIEWPORT: ViewportSize = {"width": 2400, "height": 1400}
 
 
-def run_track(firm: str, settings: Settings | None = None) -> Path:
+def run_track(firm: str, settings: Settings | None = None, *, force_login: bool = False) -> Path:
     settings = settings or load_settings()
 
     scraper_cls = SCRAPERS.get(firm)
@@ -25,7 +25,10 @@ def run_track(firm: str, settings: Settings | None = None) -> Path:
     config = load_firm_config(firm, settings.config_dir)
     scraper = scraper_cls(config, settings)
 
-    session_state = keychain.load_session(firm, settings.session_ttl_seconds)
+    if force_login:
+        keychain.clear_session(firm)
+
+    session_state = None if force_login else keychain.load_session(firm, settings.session_ttl_seconds)
     storage_state = cast(StorageState, session_state) if session_state is not None else None
 
     # Always run visibly. Headless session reuse was rejected outright by
