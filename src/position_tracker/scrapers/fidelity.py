@@ -139,6 +139,10 @@ class FidelityScraper(FirmScraper):
 
 
 def _parse_number(text: str) -> float:
+    if text.strip() == "--":
+        # Fidelity uses "--" for cells with no applicable value, e.g. shares
+        # on a holding that isn't share-denominated.
+        return 0.0
     cleaned = re.sub(r"[^0-9.\-]", "", text)
     if not cleaned:
         raise ValueError(f"Could not parse numeric value from {text!r}")

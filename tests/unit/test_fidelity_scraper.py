@@ -14,6 +14,8 @@ from position_tracker.settings import Settings
         ("$12,000.00", 12000.0),
         ("-42.5", -42.5),
         ("7", 7.0),
+        ("--", 0.0),
+        (" -- ", 0.0),
     ],
 )
 def test_parse_number(text: str, expected: float) -> None:
