@@ -4,6 +4,7 @@ import pytest
 from playwright.sync_api import Page, Route
 
 from position_tracker.firm_config import FirmConfig
+from position_tracker.models import CASH_FAKE_TICKER
 from position_tracker.scrapers.fidelity import FidelityScraper
 from position_tracker.settings import Settings
 
@@ -143,6 +144,43 @@ def test_scrape_positions_raises_when_no_rows_found(page: Page) -> None:
 
     with pytest.raises(ValueError, match="No account or position rows found"):
         scraper.scrape_positions(page)
+
+
+_CASH_ONLY_HTML = """
+<div role="grid">
+  <div class="ag-row posweb-row-account" row-id="1">
+    <div class="posweb-cell-account_primary">Joint ATM Cash</div>
+    <div class="posweb-cell-account_secondary">Z55-553140</div>
+  </div>
+  <div class="ag-row posweb-row-position posweb-row-core" row-id="2">
+    <div class="posweb-cell-symbol-name_container"><span>Cash</span></div>
+    <p class="posweb-cell-symbol-description">HELD IN MONEY MARKET</p>
+  </div>
+  <div class="ag-row posweb-row-position posweb-row-core" row-id="2">
+    <span class="posweb-cell-current_value">$12,285.96</span>
+  </div>
+</div>
+"""
+
+
+def _fulfill_cash_only_page(route: Route) -> None:
+    route.fulfill(body=_CASH_ONLY_HTML, content_type="text/html")
+
+
+def test_scrape_positions_treats_unticketed_cash_as_holding(page: Page) -> None:
+    page.route(_POSITIONS_URL, _fulfill_cash_only_page)
+
+    scraper = FidelityScraper(_config(), _settings())
+    positions = scraper.scrape_positions(page)
+
+    assert len(positions) == 1
+    cash = positions[0]
+    assert cash.account_name == "Joint ATM Cash"
+    assert cash.account_number == "...3140"
+    assert cash.asset_name == "HELD IN MONEY MARKET"
+    assert cash.ticker == CASH_FAKE_TICKER
+    assert cash.shares == 0.0
+    assert cash.value == 12285.96
 
 
 _VIEW_ACCOUNT_HTML = """

@@ -2,6 +2,10 @@ from datetime import date
 
 from pydantic import BaseModel
 
+CASH_FAKE_TICKER = "$$$$"
+"""Placeholder ticker for cash/sweep positions a firm displays without a real
+ticker symbol (e.g. an unbroken-out money market sweep)."""
+
 
 class Position(BaseModel):
     """A single holding in a single account, as scraped from a firm's website."""

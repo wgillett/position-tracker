@@ -4,7 +4,7 @@ from datetime import date
 from playwright.sync_api import Page
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
-from position_tracker.models import Position, mask_account_number
+from position_tracker.models import CASH_FAKE_TICKER, Position, mask_account_number
 from position_tracker.scrapers.base import FirmScraper
 
 _LOGIN_REDIRECT_CHECK_MS = 5 * 1000
@@ -117,11 +117,44 @@ class FidelityScraper(FirmScraper):
             description_locator = row.locator(self._selector("description"))
             quantity_locator = row.locator(self._selector("quantity"))
             value_locator = row.locator(self._selector("market_value"))
+
+            symbol_text = symbol_locator.inner_text().strip() if symbol_locator.count() > 0 else ""
+
+            if symbol_text.startswith("Cash"):
+                if value_locator.count() == 0:
+                    # A bare "Cash / HELD IN MONEY MARKET" row with no value is
+                    # a category-header divider preceding a separately-
+                    # ticketed row (e.g. SPAXX); not a holding itself.
+                    continue
+                # Some accounts sweep cash into a fund without ever displaying
+                # its ticker -- the value is real, so record it as a holding
+                # using a fake ticker instead of dropping it.
+                asset_name = (
+                    description_locator.inner_text().strip()
+                    if description_locator.count() > 0
+                    else symbol_text
+                )
+                quantity_text = (
+                    quantity_locator.inner_text().strip() if quantity_locator.count() > 0 else ""
+                )
+                positions.append(
+                    Position(
+                        firm=self.config.firm,
+                        account_name=current_account_name,
+                        account_number=current_account_number,
+                        asset_name=asset_name,
+                        ticker=CASH_FAKE_TICKER,
+                        shares=_parse_number(quantity_text) if quantity_text else 0.0,
+                        value=_parse_number(value_locator.inner_text()),
+                        date=today,
+                    )
+                )
+                continue
+
             cell_locators = (symbol_locator, description_locator, quantity_locator, value_locator)
             if any(locator.count() == 0 for locator in cell_locators):
-                # Category-header dividers (e.g. "Cash / HELD IN MONEY MARKET")
-                # match position_row but are missing cells in both fragments --
-                # they're section labels, not real holdings.
+                # Category-header dividers and other section labels match
+                # position_row but are missing cells in both fragments.
                 continue
 
             positions.append(
@@ -130,7 +163,7 @@ class FidelityScraper(FirmScraper):
                     account_name=current_account_name,
                     account_number=current_account_number,
                     asset_name=description_locator.inner_text().strip(),
-                    ticker=symbol_locator.inner_text().strip(),
+                    ticker=symbol_text,
                     shares=_parse_number(quantity_locator.inner_text()),
                     value=_parse_number(value_locator.inner_text()),
                     date=today,
