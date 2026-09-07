@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import cast
 
+import click
 from playwright.sync_api import StorageState, ViewportSize, sync_playwright
 
 from position_tracker import keychain
@@ -28,7 +29,9 @@ def run_track(firm: str, settings: Settings | None = None, *, force_login: bool 
     if force_login:
         keychain.clear_session(firm)
 
-    session_state = None if force_login else keychain.load_session(firm, settings.session_ttl_seconds)
+    session_state = (
+        None if force_login else keychain.load_session(firm, settings.session_ttl_seconds)
+    )
     storage_state = cast(StorageState, session_state) if session_state is not None else None
 
     # Always run visibly. Headless session reuse was rejected outright by
@@ -52,6 +55,10 @@ def run_track(firm: str, settings: Settings | None = None, *, force_login: bool 
             raise SystemExit(f"Failed to scrape {firm}: {exc}") from exc
         finally:
             browser.close()
+
+    if scraper.ignored_accounts:
+        ignored = ", ".join(scraper.ignored_accounts)
+        click.echo(f"Ignored accounts with no account number: {ignored}")
 
     if not positions:
         raise SystemExit(f"No positions found for {firm}; refusing to write an empty CSV.")

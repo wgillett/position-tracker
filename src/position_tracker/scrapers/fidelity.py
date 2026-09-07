@@ -71,6 +71,7 @@ class FidelityScraper(FirmScraper):
         positions: list[Position] = []
         current_account_name: str | None = None
         current_account_number: str | None = None
+        any_account_seen = False
 
         for row_id in ordered_row_ids:
             row = page.locator(
@@ -83,16 +84,30 @@ class FidelityScraper(FirmScraper):
             if is_account_row:
                 name_locator = row.locator(self._selector("account_name"))
                 number_locator = row.locator(self._selector("account_number"))
-                if name_locator.count() == 0 or number_locator.count() == 0:
+                if name_locator.count() == 0 and number_locator.count() == 0:
                     # Some account rows (e.g. an "Account total" summary row)
                     # don't carry name/number cells in either fragment -- skip
                     # rather than erroring; current_account_name/number carry over.
                     continue
+                if number_locator.count() == 0:
+                    # A "view" row (e.g. a linked account like "Vanguard SEP IRA")
+                    # that has a name but no account number of its own. Its
+                    # positions can't be attributed to a real account, so ignore
+                    # the whole block until the next real account row.
+                    self.ignored_accounts.append(name_locator.inner_text().strip())
+                    current_account_name = None
+                    current_account_number = None
+                    any_account_seen = True
+                    continue
                 current_account_name = name_locator.inner_text().strip()
                 current_account_number = mask_account_number(number_locator.inner_text().strip())
+                any_account_seen = True
                 continue
 
             if current_account_name is None or current_account_number is None:
+                if any_account_seen:
+                    # Belongs to an ignored account block -- skip its positions too.
+                    continue
                 raise ValueError(
                     "Found a position row before any account row; can't attribute "
                     "it to an account. Check the selectors in config/fidelity.yaml."

@@ -19,6 +19,9 @@ class FirmScraper(ABC):
     def __init__(self, config: FirmConfig, settings: Settings) -> None:
         self.config = config
         self.settings = settings
+        self.ignored_accounts: list[str] = []
+        """Account names skipped during scraping (e.g. a "view" with no account
+        number of its own), populated by scrape_positions for the runner to report."""
 
     @abstractmethod
     def is_logged_in(self, page: Page) -> bool:

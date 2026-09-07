@@ -145,6 +145,62 @@ def test_scrape_positions_raises_when_no_rows_found(page: Page) -> None:
         scraper.scrape_positions(page)
 
 
+_VIEW_ACCOUNT_HTML = """
+<div role="grid">
+  <div class="ag-row posweb-row-account" row-id="1">
+    <div class="posweb-cell-account_primary">W IRA</div>
+    <div class="posweb-cell-account_secondary">Z11-112801</div>
+  </div>
+  <div class="ag-row posweb-row-position" row-id="2">
+    <div class="posweb-cell-symbol-name_container"><span>FXAIX</span></div>
+    <p class="posweb-cell-symbol-description">Fidelity 500 Index Fund</p>
+  </div>
+  <div class="ag-row posweb-row-position" row-id="2">
+    <span class="posweb-cell-quantity_value">10</span>
+    <span class="posweb-cell-current_value">$2,000.00</span>
+  </div>
+  <div class="ag-row posweb-row-account" row-id="3">
+    <div class="posweb-cell-account_primary">Vanguard SEP IRA</div>
+  </div>
+  <div class="ag-row posweb-row-position" row-id="4">
+    <div class="posweb-cell-symbol-name_container"><span>VFIAX</span></div>
+    <p class="posweb-cell-symbol-description">Vanguard 500 Index Fund;Admiral</p>
+  </div>
+  <div class="ag-row posweb-row-position" row-id="4">
+    <span class="posweb-cell-quantity_value">275</span>
+    <span class="posweb-cell-current_value">--</span>
+  </div>
+  <div class="ag-row posweb-row-account" row-id="5">
+    <div class="posweb-cell-account_primary">ROTH IRA</div>
+    <div class="posweb-cell-account_secondary">Z98-765432</div>
+  </div>
+  <div class="ag-row posweb-row-position" row-id="6">
+    <div class="posweb-cell-symbol-name_container"><span>FZROX</span></div>
+    <p class="posweb-cell-symbol-description">Fidelity ZERO Total Market Index Fund</p>
+  </div>
+  <div class="ag-row posweb-row-position" row-id="6">
+    <span class="posweb-cell-quantity_value">50</span>
+    <span class="posweb-cell-current_value">$5,500.00</span>
+  </div>
+</div>
+"""
+
+
+def _fulfill_view_account_page(route: Route) -> None:
+    route.fulfill(body=_VIEW_ACCOUNT_HTML, content_type="text/html")
+
+
+def test_scrape_positions_ignores_account_with_no_account_number(page: Page) -> None:
+    page.route(_POSITIONS_URL, _fulfill_view_account_page)
+
+    scraper = FidelityScraper(_config(), _settings())
+    positions = scraper.scrape_positions(page)
+
+    assert [p.ticker for p in positions] == ["FXAIX", "FZROX"]
+    assert all(p.account_name != "Vanguard SEP IRA" for p in positions)
+    assert scraper.ignored_accounts == ["Vanguard SEP IRA"]
+
+
 def _fulfill_position_row_only(route: Route) -> None:
     html = """
     <div role="grid">
