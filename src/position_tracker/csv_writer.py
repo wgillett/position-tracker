@@ -9,7 +9,7 @@ FIELDNAMES = [
     "account_name",
     "account_number",
     "asset_name",
-    "ticker",
+    "symbol",
     "shares",
     "value",
     "date",

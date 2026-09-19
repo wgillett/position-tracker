@@ -4,7 +4,7 @@ import pytest
 from playwright.sync_api import Page, Route
 
 from position_tracker.firm_config import FirmConfig
-from position_tracker.models import CASH_FAKE_TICKER
+from position_tracker.models import CASH_FAKE_SYMBOL
 from position_tracker.scrapers.fidelity import FidelityScraper
 from position_tracker.settings import Settings
 
@@ -108,14 +108,14 @@ def test_scrape_positions_parses_account_rows_and_holdings(page: Page) -> None:
     # The "Account total" row shares the account_row class but has no
     # name/number cells -- it must be skipped too, not treated as a new account.
     assert len(positions) == 3
-    assert all(p.ticker != "Cash" for p in positions)
+    assert all(p.symbol != "Cash" for p in positions)
     assert all(p.value != 42.0 for p in positions)
 
     money_market = positions[0]
     assert money_market.firm == "fidelity"
     assert money_market.account_name == "INDIVIDUAL - TOD"
     assert money_market.account_number == "...5678"
-    assert money_market.ticker == "SPAXX"
+    assert money_market.symbol == "SPAXX"
     assert money_market.asset_name == "Fidelity Government Money Market Fund"
     assert money_market.shares == 1234.56
     assert money_market.value == 1234.56
@@ -123,12 +123,12 @@ def test_scrape_positions_parses_account_rows_and_holdings(page: Page) -> None:
     second_holding = positions[1]
     assert second_holding.account_name == "INDIVIDUAL - TOD"
     assert second_holding.account_number == "...5678"
-    assert second_holding.ticker == "FXAIX"
+    assert second_holding.symbol == "FXAIX"
 
     roth_holding = positions[2]
     assert roth_holding.account_name == "ROTH IRA"
     assert roth_holding.account_number == "...5432"
-    assert roth_holding.ticker == "FZROX"
+    assert roth_holding.symbol == "FZROX"
     assert roth_holding.shares == 50.0
     assert roth_holding.value == 5500.0
 
@@ -167,7 +167,7 @@ def _fulfill_cash_only_page(route: Route) -> None:
     route.fulfill(body=_CASH_ONLY_HTML, content_type="text/html")
 
 
-def test_scrape_positions_treats_unticketed_cash_as_holding(page: Page) -> None:
+def test_scrape_positions_treats_symbolless_cash_as_holding(page: Page) -> None:
     page.route(_POSITIONS_URL, _fulfill_cash_only_page)
 
     scraper = FidelityScraper(_config(), _settings())
@@ -178,7 +178,7 @@ def test_scrape_positions_treats_unticketed_cash_as_holding(page: Page) -> None:
     assert cash.account_name == "Joint ATM Cash"
     assert cash.account_number == "...3140"
     assert cash.asset_name == "HELD IN MONEY MARKET"
-    assert cash.ticker == CASH_FAKE_TICKER
+    assert cash.symbol == CASH_FAKE_SYMBOL
     assert cash.shares == 0.0
     assert cash.value == 12285.96
 
@@ -234,7 +234,7 @@ def test_scrape_positions_ignores_account_with_no_account_number(page: Page) -> 
     scraper = FidelityScraper(_config(), _settings())
     positions = scraper.scrape_positions(page)
 
-    assert [p.ticker for p in positions] == ["FXAIX", "FZROX"]
+    assert [p.symbol for p in positions] == ["FXAIX", "FZROX"]
     assert all(p.account_name != "Vanguard SEP IRA" for p in positions)
     assert scraper.ignored_accounts == ["Vanguard SEP IRA"]
 

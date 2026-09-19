@@ -18,10 +18,10 @@ _LOGIN_URL_PATTERN = re.compile(r"logon|login|signin", re.IGNORECASE)
 # dash Vanguard uses as a separator.
 _HEADING_SEPARATOR = re.compile(r"\s+—\s+")
 
-# The settlement (sweep) fund's card has no ticker in its markup, so known
-# fund names are mapped to their ticker by hand. Add an entry here (and see
+# The settlement (sweep) fund's card has no symbol in its markup, so known
+# fund names are mapped to their symbol by hand. Add an entry here (and see
 # the ValueError raised below) if a new settlement fund name is encountered.
-_SETTLEMENT_FUND_TICKERS = {
+_SETTLEMENT_FUND_SYMBOLS = {
     "VANGUARD FEDERAL MONEY MARKET FUND": "VMFXX",
 }
 
@@ -118,9 +118,9 @@ class VanguardScraper(FirmScraper):
             rows = table.locator(self._selector("holding_row"))
             for r in range(rows.count()):
                 row = rows.nth(r)
-                ticker_locator = row.locator(self._selector("ticker"))
+                symbol_locator = row.locator(self._selector("symbol"))
                 description_locator = row.locator(self._selector("description"))
-                if ticker_locator.count() == 0 or description_locator.count() == 0:
+                if symbol_locator.count() == 0 or description_locator.count() == 0:
                     continue
 
                 quantity_cell = row.locator(f":scope > :nth-child({quantity_index})")
@@ -132,7 +132,7 @@ class VanguardScraper(FirmScraper):
                         account_name=account_name,
                         account_number=account_number,
                         asset_name=description_locator.inner_text().strip(),
-                        ticker=ticker_locator.inner_text().strip(),
+                        symbol=symbol_locator.inner_text().strip(),
                         shares=_parse_number(quantity_cell.inner_text()),
                         value=_parse_number(balance_cell.inner_text()),
                         date=today,
@@ -179,11 +179,11 @@ class VanguardScraper(FirmScraper):
             account_name, account_number = account_info[account_id]
 
             fund_name = name_link.inner_text().strip()
-            ticker = _SETTLEMENT_FUND_TICKERS.get(fund_name.upper())
-            if ticker is None:
+            symbol = _SETTLEMENT_FUND_SYMBOLS.get(fund_name.upper())
+            if symbol is None:
                 raise ValueError(
-                    f"Unknown settlement fund {fund_name!r}; add its ticker to "
-                    f"_SETTLEMENT_FUND_TICKERS in src/position_tracker/scrapers/vanguard.py."
+                    f"Unknown settlement fund {fund_name!r}; add its symbol to "
+                    f"_SETTLEMENT_FUND_SYMBOLS in src/position_tracker/scrapers/vanguard.py."
                 )
 
             balance_locator = section.locator(self._selector("settlement_fund_balance"))
@@ -195,7 +195,7 @@ class VanguardScraper(FirmScraper):
                     account_name=account_name,
                     account_number=account_number,
                     asset_name=fund_name,
-                    ticker=ticker,
+                    symbol=symbol,
                     # The settlement fund's NAV is fixed at $1, so shares == dollars;
                     # no share count is ever shown in this card's markup.
                     shares=value,

@@ -18,7 +18,7 @@ def test_write_positions_csv_roundtrip(tmp_path: Path) -> None:
             account_name="Individual",
             account_number="...1234",
             asset_name="Fidelity® Government Money Market Fund",
-            ticker="SPAXX",
+            symbol="SPAXX",
             shares=100.5,
             value=100.5,
             date=date(2026, 9, 3),
@@ -29,7 +29,7 @@ def test_write_positions_csv_roundtrip(tmp_path: Path) -> None:
 
     content = path.read_text()
     lines = content.strip().splitlines()
-    assert lines[0] == "firm,account_name,account_number,asset_name,ticker,shares,value,date"
+    assert lines[0] == "firm,account_name,account_number,asset_name,symbol,shares,value,date"
     assert "SPAXX" in lines[1]
     assert "...1234" in lines[1]
 

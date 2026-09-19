@@ -15,7 +15,7 @@ _SELECTORS = {
     "expand_accounts_button": "[data-testid='expand-accounts']",
     "holdings_table": "table",
     "holding_row": "tbody tr:has(th[scope='row'])",
-    "ticker": ".holding-ticker",
+    "symbol": ".holding-ticker",
     "description": ".holding-name__text",
     "quantity_column_header": "thead th[data-testid='quantity-column']",
     "balance_column_header": "thead th[data-testid='current-balance-column']",
@@ -160,7 +160,7 @@ def test_scrape_positions_parses_accounts_and_holdings(page: Page) -> None:
     assert ira_holding.firm == "vanguard"
     assert ira_holding.account_name == "Test Person — Traditional IRA Brokerage Account"
     assert ira_holding.account_number == "...5678"
-    assert ira_holding.ticker == "VFIAX"
+    assert ira_holding.symbol == "VFIAX"
     assert ira_holding.asset_name == "VANGUARD 500 INDEX ADMIRAL CL"
     assert ira_holding.shares == 10.123
     assert ira_holding.value == 4555.35
@@ -168,7 +168,7 @@ def test_scrape_positions_parses_accounts_and_holdings(page: Page) -> None:
     rollover_holding = positions[1]
     assert rollover_holding.account_name == "Test Person — Rollover IRA Brokerage Account"
     assert rollover_holding.account_number == "...4321"
-    assert rollover_holding.ticker == "AAPL"
+    assert rollover_holding.symbol == "AAPL"
     assert rollover_holding.shares == 5.0
     assert rollover_holding.value == 900.0
 
@@ -177,7 +177,7 @@ def test_scrape_positions_parses_accounts_and_holdings(page: Page) -> None:
     settlement_fund = positions[2]
     assert settlement_fund.account_name == "Test Person — Traditional IRA Brokerage Account"
     assert settlement_fund.account_number == "...5678"
-    assert settlement_fund.ticker == "VMFXX"
+    assert settlement_fund.symbol == "VMFXX"
     assert settlement_fund.asset_name == "Vanguard Federal Money Market Fund"
     assert settlement_fund.shares == 0.86
     assert settlement_fund.value == 0.86

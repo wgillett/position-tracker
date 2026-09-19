@@ -50,7 +50,7 @@ Work with the user to log into the firm's website, then pull down positions from
 - account_name
 - account_number - masked to the last 4 digits, e.g., ...1234
 - asset_name - e.g., Fidelity® Government Money Market Fund
-- ticker - e.g., SPAXX
+- symbol - e.g., SPAXX
 - shares - number of shares
 - value - in dollars
 - date - date on which the data was pulled

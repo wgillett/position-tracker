@@ -3,7 +3,7 @@
 Reuses a cached session from the keychain when one is still valid (same as
 `track`), falling back to a visible manual login otherwise. Then runs the
 actual scrape_positions() and prints a summary with every dollar/share value
-omitted -- only account names, masked account numbers, tickers, and asset
+omitted -- only account names, masked account numbers, symbols, and asset
 names are safe to print, since digit-redaction would otherwise mangle the
 numbers we actually care to sanity-check by eye (real vs. garbled).
 
@@ -52,6 +52,6 @@ def test_vanguard_scrape_positions() -> None:
 
         print(f"\n{len(positions)} position(s) scraped:")
         for p in positions:
-            print(f"  [{p.account_name} {p.account_number}] {p.ticker} -- {p.asset_name}")
+            print(f"  [{p.account_name} {p.account_number}] {p.symbol} -- {p.asset_name}")
 
         browser.close()

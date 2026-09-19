@@ -4,7 +4,7 @@ from datetime import date
 from playwright.sync_api import Page
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
-from position_tracker.models import CASH_FAKE_TICKER, Position, mask_account_number
+from position_tracker.models import CASH_FAKE_SYMBOL, Position, mask_account_number
 from position_tracker.scrapers.base import FirmScraper
 
 _LOGIN_REDIRECT_CHECK_MS = 5 * 1000
@@ -127,8 +127,8 @@ class FidelityScraper(FirmScraper):
                     # ticketed row (e.g. SPAXX); not a holding itself.
                     continue
                 # Some accounts sweep cash into a fund without ever displaying
-                # its ticker -- the value is real, so record it as a holding
-                # using a fake ticker instead of dropping it.
+                # its symbol -- the value is real, so record it as a holding
+                # using a fake symbol instead of dropping it.
                 asset_name = (
                     description_locator.inner_text().strip()
                     if description_locator.count() > 0
@@ -143,7 +143,7 @@ class FidelityScraper(FirmScraper):
                         account_name=current_account_name,
                         account_number=current_account_number,
                         asset_name=asset_name,
-                        ticker=CASH_FAKE_TICKER,
+                        symbol=CASH_FAKE_SYMBOL,
                         shares=_parse_number(quantity_text) if quantity_text else 0.0,
                         value=_parse_number(value_locator.inner_text()),
                         date=today,
@@ -163,7 +163,7 @@ class FidelityScraper(FirmScraper):
                     account_name=current_account_name,
                     account_number=current_account_number,
                     asset_name=description_locator.inner_text().strip(),
-                    ticker=symbol_text,
+                    symbol=symbol_text,
                     shares=_parse_number(quantity_locator.inner_text()),
                     value=_parse_number(value_locator.inner_text()),
                     date=today,
