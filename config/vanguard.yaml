@@ -29,8 +29,9 @@ positions_url: https://www.vanguard.com/en/investor/portfolio/investments/
 # so column reordering doesn't silently misattribute values.
 #
 # The settlement (sweep) fund balance is NOT a row in this table -- it renders
-# in a separate "Account balance details" card (settlement_fund_section)
-# instead. That card's markup has no symbol anywhere, so VanguardScraper maps
+# in a separate "Account balance details" card instead, wrapped in an
+# <app-settlement-fund> custom element (settlement_fund_section; it has no
+# data-testid, confirmed by inspecting the live page). That card's markup has no symbol anywhere, so VanguardScraper maps
 # the fund's display name to a symbol by hand (see _SETTLEMENT_FUND_SYMBOLS in
 # scrapers/vanguard.py) and assumes shares == dollar value, since the fund's
 # NAV is fixed at $1. Each card is matched to its account via the account id
@@ -46,6 +47,6 @@ selectors:
   description: .holding-name__text
   quantity_column_header: "thead th[data-testid='quantity-column']"
   balance_column_header: "thead th[data-testid='current-balance-column']"
-  settlement_fund_section: "[data-testid='settlement-fund-section']"
+  settlement_fund_section: app-settlement-fund
   settlement_fund_name: "[data-testid='settlementFundName']"
   settlement_fund_balance: "[data-testid='settlement-fund-balance']"

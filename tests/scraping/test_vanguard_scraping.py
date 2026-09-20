@@ -19,7 +19,7 @@ _SELECTORS = {
     "description": ".holding-name__text",
     "quantity_column_header": "thead th[data-testid='quantity-column']",
     "balance_column_header": "thead th[data-testid='current-balance-column']",
-    "settlement_fund_section": "[data-testid='settlement-fund-section']",
+    "settlement_fund_section": "app-settlement-fund",
     "settlement_fund_name": "[data-testid='settlementFundName']",
     "settlement_fund_balance": "[data-testid='settlement-fund-balance']",
 }
@@ -64,13 +64,14 @@ _FIXTURE_HTML = """
   </table>
 </div>
 
-<div data-testid="settlement-fund-section">
+<app-settlement-fund>
   <a data-testid="settlementFundName"
      href="/en/investor/portfolio/investments/holding-details/111111111111111?positionId=1">
     Vanguard Federal Money Market Fund
   </a>
+  <span>(Settlement fund)</span>
   <p data-testid="settlement-fund-balance">$0.86</p>
-</div>
+</app-settlement-fund>
 
 <div data-testid="account-id:222222222222222">
   <span class="c11n-accordion__heading">
@@ -114,13 +115,13 @@ _FIXTURE_HTML = """
   </span>
 </div>
 
-<div data-testid="settlement-fund-section">
+<app-settlement-fund>
   <a data-testid="settlementFundName"
      href="/en/investor/portfolio/investments/holding-details/444444444444444?positionId=2">
     Vanguard Federal Money Market Fund
   </a>
   <p data-testid="settlement-fund-balance">$0.00</p>
-</div>
+</app-settlement-fund>
 """
 
 
@@ -191,13 +192,13 @@ def _fulfill_unknown_settlement_fund_page(route: Route) -> None:
         Test Person — Traditional IRA Brokerage Account — 12345678*
       </span>
     </div>
-    <div data-testid="settlement-fund-section">
+    <app-settlement-fund>
       <a data-testid="settlementFundName"
          href="/en/investor/portfolio/investments/holding-details/111111111111111?positionId=1">
         Some New Settlement Fund
       </a>
       <p data-testid="settlement-fund-balance">$1.00</p>
-    </div>
+    </app-settlement-fund>
     """
     route.fulfill(body=html, content_type="text/html; charset=utf-8")
 
@@ -208,6 +209,34 @@ def test_scrape_positions_raises_on_unknown_settlement_fund(page: Page) -> None:
     scraper = VanguardScraper(_config(), _settings())
 
     with pytest.raises(ValueError, match="Unknown settlement fund"):
+        scraper.scrape_positions(page)
+
+
+def _fulfill_unmatched_settlement_card_page(route: Route) -> None:
+    # A settlement fund card whose markup lacks the expected test IDs, as
+    # might happen for one account type: the label is visible, but the
+    # selector matches nothing.
+    html = """
+    <button data-testid="expand-accounts">Expand accounts</button>
+    <div data-testid="account-id:111111111111111">
+      <span class="c11n-accordion__heading">
+        Test Person — Traditional IRA Brokerage Account — 12345678*
+      </span>
+      <div class="balance-card">
+        <a>Vanguard Federal Money Market Fund</a> <span>(Settlement fund)</span>
+        <p>$2.06</p>
+      </div>
+    </div>
+    """
+    route.fulfill(body=html, content_type="text/html; charset=utf-8")
+
+
+def test_scrape_positions_raises_on_unmatched_settlement_card(page: Page) -> None:
+    page.route(_POSITIONS_URL, _fulfill_unmatched_settlement_card_page)
+
+    scraper = VanguardScraper(_config(), _settings())
+
+    with pytest.raises(ValueError, match="Settlement fund"):
         scraper.scrape_positions(page)
 
 

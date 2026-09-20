@@ -31,6 +31,12 @@ _SETTLEMENT_FUND_SYMBOLS = {
 # assuming it's nested inside that account's DOM container.
 _ACCOUNT_ID_IN_HREF = re.compile(r"/holding-details/(\d+)")
 
+# The "(Settlement fund)" label Vanguard shows beside the fund name in each
+# account's balance card. Counting these independently of the card selectors
+# lets us notice cards the selectors fail to match, instead of silently
+# dropping the balance.
+_SETTLEMENT_FUND_LABEL = re.compile(r"\(\s*settlement fund\s*\)", re.IGNORECASE)
+
 
 class VanguardScraper(FirmScraper):
     def is_logged_in(self, page: Page) -> bool:
@@ -151,6 +157,18 @@ class VanguardScraper(FirmScraper):
         today: date,
     ) -> list[Position]:
         sections = page.locator(self._selector("settlement_fund_section"))
+
+        label_count = page.get_by_text(_SETTLEMENT_FUND_LABEL).count()
+        if label_count > sections.count():
+            raise ValueError(
+                f"Found {label_count} '(Settlement fund)' label(s) on the Vanguard "
+                f"Holdings page but only {sections.count()} card(s) matching the "
+                f"'settlement_fund_section' selector; at least one settlement fund "
+                f"balance would be silently dropped. The page structure may have "
+                f"changed. Check the settlement_fund_* selectors in "
+                f"config/vanguard.yaml."
+            )
+
         positions: list[Position] = []
 
         for i in range(sections.count()):
